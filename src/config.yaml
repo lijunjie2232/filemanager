@@ -1,0 +1,4 @@
+backend:
+  location: "http://localhost:8080/hello_servlet2_war_exploded"
+api:
+  file: "/api/file"
