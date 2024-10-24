@@ -2,6 +2,8 @@
 
 このプロジェクトは、**Vue.js** と **Vuetify** を使用して構築されたシンプルなクラウドストレージアプリケーションです。ユーザーはファイルをアップロードし、ダウンロードすることができます。
 
+バックエンドのソースコードはこちら：[hello-servlet2](https://github.com/lijunjie2232/java_web_study/tree/master/servlet/hello-servlet2)
+
 ## 環境構築
 
 ### 必要なソフトウェア
@@ -53,3 +55,7 @@
 - [ ] search
 - [ ] other options like sort
 - [ ] file tree at side bar
+
+## 免責事項
+
+このプロジェクトは、JavaサーブレットとWeb開発のフロントエンド関連技術を学ぶことを目的としている、ゆえに実装方法は専門的ではなく、コーディングもあまり標準化されていません。自由に使用・修正・配布できますが、使用による損害については責任を負いません。
