@@ -50,10 +50,11 @@
 - [ ] path link
 - [ ] page and limit
 - [ ] file delete
+- [ ] directory create and delete
 - [ ] file preview
 - [ ] right click
 - [ ] search
-- [ ] other options like sort
+- [ ] other file options like sort, copy ...
 - [ ] file tree at side bar
 
 ## 免責事項
