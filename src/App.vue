@@ -1,98 +1,78 @@
 <template>
     <v-card class="mx-auto" width="auto">
-        <v-toolbar color="light-blue" extended light>
-            <!-- <v-app-bar-nav-icon color="grey-darken-4"></v-app-bar-nav-icon> -->
-
-            <v-toolbar-title>File Manager</v-toolbar-title>
-
-            <v-spacer></v-spacer>
-
-            <v-btn color="grey-darken-4" icon="mdi-magnify"></v-btn>
-
-            <template v-slot:extension>
-                <v-icon class="ms-2 me-2" icon="mdi-home"></v-icon>/
-                <v-breadcrumbs :items="displayPath">
-                    <template v-v-slot:divider>
-                        <v-icon icon="mdi-chevron-right"></v-icon>
-                    </template>
-                </v-breadcrumbs>
-                <v-fab class="me-4" color="orange-darken-2" icon="mdi-cloud-upload" location="bottom right" size="40"
-                    absolute offset @click="uploadHandler">
-                </v-fab>
-                <input type="file" ref="upfile" v-on:change="upload($event)" style="display: none;">
-            </template>
-        </v-toolbar>
-        <v-progress-linear color="orange-darken-1" height="5" :model-value="upLoadProgress" striped
-            :active="progressActivate"></v-progress-linear>
-        <v-list lines="two" subheader>
-            <v-list-item v-for="item in fileData" :key="item.name" link @click="downloadHandler($event, item)">
-                <template v-slot:prepend>
-                    <v-avatar :class="[item.dir ? classDir : classFile]"
-                        :icon="item.dir ? iconDir : iconFile"></v-avatar>
-                </template>
-
-                <v-list-item-title>{{ item.name }}</v-list-item-title>
-
-                <v-list-item-subtitle>{{ new Date(item.modify) }}<v-chip class="ms-4" size="x-small" color="default"
-                        v-if="!item.dir">
-                        {{ sizeFitter(item.size) }}
-                    </v-chip>
-                </v-list-item-subtitle>
-            </v-list-item>
-        </v-list>
+        <ToolBar :displayPath="displayPath" :upload="upload"></ToolBar>
+        <Progress :progressActivate="progressActivate" :upLoadProgress="upLoadProgress"></Progress>
+        <FileView :pwd="pwd" :fileData="fileData" :prevDir="prevDir" @pathParser="pathParser"
+            @refreshFiles="refreshFiles" @download="download"></FileView>
     </v-card>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
-
-const sizeKeta = ['B', 'KB', 'MB', 'GB', 'TB']
-const sizeFitter = (size) => {
-    let keta = 0
-    while (size >= 1024) {
-        size /= 1024
-        keta += 1
-    }
-    return String(size.toFixed(2)) + sizeKeta[keta];
-}
+import Progress from './pages/Progress.vue';
+import { url, sortFiles } from './utils/utils';
+import FileView from './pages/FileView.vue';
+import ToolBar from './pages/ToolBar.vue';
 
 const displayPath = ref([])
-const iconDir = 'mdi-folder'
-const iconFile = 'mdi-clipboard-text'
-const classDir = 'bg-blue text-white'
-const classFile = 'bg-grey-lighten-1 text-white'
 
 const sortBy = "name"
 const sortRevert = false
 const fileMae = false
 const fileData = ref([])
 let pathList = Array()
-const url = import.meta.env.VITE_APP_API_BASE_URL + "/file"
+let historyForward = Array()
+let historyBackward = Array()
+let maxHistory = 20
 
-// console.log(import.meta.env.VITE_APP_API_BASE_URL);
+const upLoadProgress = ref(0) //定义上传进度
+const progressActivate = ref(false)
 
+const historyPush = (path) => {
+    while (historyForward.length >= maxHistory) { historyForward.shift() }
+    historyForward.push(path)
+}
 
 const pathParser = (path) => {
+    historyPush(path)
     if (path[0] === '/') path = path.substr(1)
-    path.trim('/')
+    path.trim()
     if (path.length === 0)
         pathList = []
     else
         pathList = path.split("/")
     displayPath.value = []
-    let totalPath = ""
-    for (let p in pathList) {
+    let totalPath = "/"
+    let stack = []
+    let clrPathList = []
+    console.log(pathList)
+
+    for (let p = pathList.length - 1; p >= 0; p--) {
         if (pathList[p] === "") continue
-        path += pathList[p]
-        if (path[path.length - 1] !== '/')
-            path += '/'
-        displayPath.value.push({
-            title: pathList[p],
-            path: totalPath,
-            disabled: false
-        })
+        else if (pathList[p] === "..") {
+            stack.push(pathList[p])
+        }
+        else if (pathList[p] === ".") {
+            continue
+        }
+        else {
+            if (stack.length > 0) {
+                stack.pop()
+                continue
+            }
+            clrPathList.unshift(pathList[p])
+            totalPath = '/' + pathList[p] + totalPath
+
+            displayPath.value.unshift({
+                title: pathList[p],
+                path: totalPath,
+                disabled: false
+            })
+        }
     }
+    pathList = clrPathList
+    refreshFiles()
 }
 
 const pwd = () => {
@@ -103,28 +83,22 @@ const pwd = () => {
 }
 
 const forwardPath = (item) => {
-    console.log("forwardPath");
-    console.log(item);
+    if (historyBackward.length == 0) return null
+    let history = historyBackward.pop()
+    historyForward.push(history)
+    return history
 }
 
-const backwardPath = (item) => {
-    console.log("backwardPath");
-    console.log(item);
+const backwardPath = () => {
+    if (historyForward.length == 0) return null
+    let history = historyForward.pop()
+    historyBackward.push(history)
+    return history
 }
 
-const sortFiles = (items) => {
-    items.sort((a, b) => {
-        // Sort by dir (true comes before false)
-        if (a.dir != b.dir) {
-            return fileMae ? a.dir - b.dir : b.dir - a.dir;
-        }
-        // Sort by name if dir is the same
-        return sortRevert ? b[sortBy].localeCompare(a.name) : a[sortBy].localeCompare(b.name);
-    })
-    return items
-}
 const setFiles = (files) => {
-    fileData.value = sortFiles(files)
+    let ffiles = sortFiles(files)
+    fileData.value = ffiles
 }
 const setPath = (path) => {
     pathParser(path)
@@ -147,15 +121,12 @@ const refreshFiles = () => {
             // console.log(response.data.file);
 
             setFiles(response.data.file)
-            setPath(response.data.path)
+            // setPath(response.data.path)
         }, error => {
             // console.log('错误', error.data.message)
             alert(error.data.message)
         })
 }
-
-const upLoadProgress = ref(0) //定义上传进度
-const progressActivate = ref(false)
 
 const upload = (event) => {
     event.preventDefault()
@@ -166,7 +137,7 @@ const upload = (event) => {
 
     const formData = new FormData() //声明一个formdata对象，用于存储file文件以及其他需要传递给服务器的参数
 
-    formData.append('path', '/')
+    formData.append('path', pwd())
     formData.append('overwrite', true)
     formData.append('upfile', file)
 
@@ -192,6 +163,7 @@ const upload = (event) => {
             // console.log(res.data.msg)
             progressActivate.value = false
             alert(res.data.msg)
+            refreshFiles()
         }).catch(error => {
             // console.log(error.data.msg)
             alert(error.data.msg)
@@ -210,23 +182,14 @@ const download = (filePath, title) => {
 
 }
 
-const uploadHandler = (event) => {
-    // console.log("upload")
-    event.currentTarget.nextElementSibling.click()
-}
-
-const downloadHandler = (evnet, file) => {
-
-    let filePath = pwd() + file.name
-    if (file.dir) {
-        // into directory
-        pathParser(filePath)
-        refreshFiles()
-    } else {
-        // download
-        download(filePath, file.name)
+const prevDir = () => {
+    if (pwd() === '/')
+        return
+    else {
+        pathParser(pwd() + '..')
     }
 }
 
-refreshFiles()
+// refreshFiles()
+pathParser("/")
 </script>
