@@ -46,7 +46,6 @@ const pathParser = (path) => {
     let totalPath = "/"
     let stack = []
     let clrPathList = []
-    console.log(pathList)
 
     for (let p = pathList.length - 1; p >= 0; p--) {
         if (pathList[p] === "") continue
@@ -193,3 +192,5 @@ const prevDir = () => {
 // refreshFiles()
 pathParser("/")
 </script>
+
+<style lang="css"></style>
